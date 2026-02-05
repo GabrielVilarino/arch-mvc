@@ -1,33 +1,28 @@
 from typing import Dict
+from fastapi import HTTPException
 from src.models.entities.person import Person
 from src.models.repository.person_repository import person_repository
 
 class PeopleFinderController:
     def find_by_name(self, name: str) -> Dict:
         try:
-            
+
             if not isinstance(name, str):
-                raise ValueError("Campo nome está incorreto")
-    
+                raise HTTPException(status_code=400, detail="Campo nome está incorreto")
+
             if name.isnumeric():
-                raise ValueError("Campo nome está incorreto")
+                raise HTTPException(status_code=400, detail="Campo nome está incorreto")
 
             person = person_repository.find_person_by_name(name)
 
             if not person:
-                raise Exception('Pessoa não encontrada')
+                raise HTTPException(status_code=404, detail="Pessoa não encontrada")
 
             response = self.__format_response(person)
 
-            return {
-                'success': True,
-                'message': response
-            }
+            return response
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            raise HTTPException(status_code=400, detail=str(e))
         
     def find_all(self) -> Dict:
         try:
@@ -36,15 +31,9 @@ class PeopleFinderController:
 
             response = self.__format_response(people)
 
-            return {
-                'success': True,
-                'message': response
-            }
+            return response
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            raise HTTPException(status_code=400, detail=str(e))
     
 
     def __validate_fields(self, person_finder_information: Dict) -> None:

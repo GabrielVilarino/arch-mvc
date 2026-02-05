@@ -1,6 +1,7 @@
 from typing import Dict
+from fastapi import HTTPException
 from src.models.entities.person import Person
-from src.schema.person_schema import PersonRegisterRequest
+from src.schemas.person_schema import PersonRegisterRequest
 from src.models.repository.person_repository import person_repository
 
 class PeopleRegisterController:
@@ -14,15 +15,9 @@ class PeopleRegisterController:
 
             response = self.__format_response(new_person_information)
 
-            return {
-                'success': True,
-                'message': response
-            }
+            return response
         except Exception as e:
-            return {
-                'success': False,
-                'error': str(e)
-            }
+            raise HTTPException(status_code=400, detail=str(e))
 
 
     def __validate_fields(self, new_person_information: PersonRegisterRequest) -> None:
