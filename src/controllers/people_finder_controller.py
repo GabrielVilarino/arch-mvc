@@ -1,19 +1,15 @@
 from typing import Dict
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
 from src.models.entities.person import Person
 from src.models.repository.person_repository import person_repository
 
 class PeopleFinderController:
-    def find_by_name(self, name: str) -> Dict:
+    def find_by_name(self, name: str, db: Session) -> Dict:
         try:
+            self.__validate_name(name)
 
-            if not isinstance(name, str):
-                raise HTTPException(status_code=400, detail="Campo nome está incorreto")
-
-            if name.isnumeric():
-                raise HTTPException(status_code=400, detail="Campo nome está incorreto")
-
-            person = person_repository.find_person_by_name(name)
+            person = person_repository.find_person_by_name(name=name, db=db)
 
             if not person:
                 raise HTTPException(status_code=404, detail="Pessoa não encontrada")
@@ -21,29 +17,31 @@ class PeopleFinderController:
             response = self.__format_response(person)
 
             return response
+        except HTTPException:
+            raise
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
         
-    def find_all(self) -> Dict:
+    def find_all(self, db: Session) -> Dict:
         try:
 
-            people = person_repository.find_all()
+            people = person_repository.find_all(db=db)
 
             response = self.__format_response(people)
 
             return response
+        except HTTPException:
+            raise
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
     
 
-    def __validate_fields(self, person_finder_information: Dict) -> None:
-        name = person_finder_information.get("name")
-
+    def __validate_name(self, name: str) -> None:
         if not isinstance(name, str):
-            raise ValueError("Campo nome está incorreto")
- 
+            raise HTTPException(status_code=400, detail="Campo nome está incorreto")
+
         if name.isnumeric():
-            raise ValueError("Campo nome está incorreto")
+            raise HTTPException(status_code=400, detail="Campo nome está incorreto")
 
 
     def __format_response(self, people: list[Person]) -> Dict:

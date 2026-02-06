@@ -1,38 +1,42 @@
 from typing import Dict
 from fastapi import HTTPException
+from sqlalchemy.orm import Session
+from fastapi import HTTPException
 from src.models.entities.person import Person
 from src.schemas.person_schema import PersonRegisterRequest
 from src.models.repository.person_repository import person_repository
 
 class PeopleRegisterController:
-    def register(self, new_person_information: PersonRegisterRequest) -> Dict:
+    def register(self, new_person_information: PersonRegisterRequest, db: Session) -> Dict:
         try:
             self.__validate_fields(new_person_information)         
             new_person_information = self.__format_fields(new_person_information)
 
-            self.__verify_person(new_person_information)
-            self.__register_person(new_person_information)
+            self.__verify_person(new_person_information=new_person_information, db=db)
+            self.__register_person(new_person_information=new_person_information, db=db)
 
             response = self.__format_response(new_person_information)
 
             return response
+        except HTTPException:
+            raise
         except Exception as e:
-            raise HTTPException(status_code=400, detail=str(e))
+            raise HTTPException(status_code=500, detail=str(e))
 
 
     def __validate_fields(self, new_person_information: PersonRegisterRequest) -> None:
         if not isinstance(new_person_information.name, str):
-            raise ValueError("Campo nome está incorreto")
+            raise HTTPException(status_code=400, detail="Campo nome está incorreto")
         
         try:
             int(new_person_information.age)
         except Exception:
-            raise ValueError("Campo idade está incorreto")
+            raise HTTPException(status_code=400, detail="Campo idade está incorreto")
         
         try:
             float(new_person_information.height)
         except Exception:
-            raise ValueError("Campo altura está incorreto")
+            raise HTTPException(status_code=400, detail="Campo altura está incorreto")
 
 
     def __format_fields(self, new_person_information: PersonRegisterRequest) -> PersonRegisterRequest:
@@ -43,24 +47,31 @@ class PeopleRegisterController:
         return new_person_information
 
 
-    def __verify_person(self, new_person_information: PersonRegisterRequest) -> None:
-        person = person_repository.find_person_by_name(new_person_information.name)
+    def __verify_person(self, new_person_information: PersonRegisterRequest, db: Session) -> None:
+        person = person_repository.find_person_by_name(
+            name=new_person_information.name,
+            db=db
+        )
 
         if person:
-            raise Exception('Pessoa ja cadastrada')
+            raise HTTPException(status_code=400, detail='Pessoa ja cadastrada')
 
 
-    def __register_person(self, new_person_information: PersonRegisterRequest) -> None:
+    def __register_person(self, new_person_information: PersonRegisterRequest, db: Session) -> None:
         try:
-            person = Person(new_person_information.name, new_person_information.age, new_person_information.height)
-        except Exception:
-            raise Exception('Erro ao instanciar pessoa')
+            person = Person(
+                name=new_person_information.name,
+                age=new_person_information.age,
+                height=new_person_information.height
+            )
+        except Exception as e:
+            raise Exception(f'Erro ao instanciar pessoa: {str(e)}')
 
         try:
             repository = person_repository
-            repository.registry_person(person)
-        except Exception:
-            raise Exception('Erro ao cadastrar pessoa')
+            repository.registry_person(person=person, db=db)
+        except Exception as e:
+            raise Exception(f'Erro ao cadastrar pessoa: {str(e)}')
         
     def __format_response(self, new_person_information: PersonRegisterRequest) -> Dict:
         return {

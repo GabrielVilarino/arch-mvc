@@ -1,26 +1,29 @@
+from fastapi import HTTPException
+from sqlalchemy.orm import Session
 from src.models.entities.person import Person
 
 class PersonRepository:
-    def __init__(self) -> None:
-        self.__people: list[Person] = []
 
-    def registry_person(self, person: Person) -> None:
+    def registry_person(self, person: Person, db: Session) -> None:
         try:
-            self.__people.append(person)
-        except Exception:
-            raise Exception("Erro ao cadastrar pessoa")
+            db.add(person)
+            db.commit()
+            db.refresh(person)
+        except Exception as e:
+            raise Exception(str(e))
 
-    def find_person_by_name(self, name: str) -> Person:
-        for person in self.__people:
-            if person.name == name:
-                return [person]
-        return None
-    
-    def find_all(self) -> list[Person]:
 
-        if len(self.__people) == 0:
-            raise Exception("Nenhuma pessoa cadastrada")
+    def find_person_by_name(self, name: str, db: Session) -> list[Person]:
+        return db.query(Person).filter(Person.name == name).all()
 
-        return self.__people
-    
+
+    def find_all(self, db: Session) -> list[Person]:
+        people = db.query(Person).all()
+
+        if not people:
+            raise HTTPException(status_code=404, detail="Nenhuma pessoa cadastrada")
+
+        return people
+
+
 person_repository = PersonRepository()
